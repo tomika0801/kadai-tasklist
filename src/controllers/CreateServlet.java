@@ -2,8 +2,10 @@ package controllers;
 
 import java.io.IOException;
 import java.sql.Timestamp;
+import java.util.List;
 
 import javax.persistence.EntityManager;
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -11,7 +13,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import models.Task;
+import models.validators.TaskValidator;
 import utils.DBUtil;
+
 /**
  * Servlet implementation class CreateServlet
  */
@@ -44,13 +48,28 @@ public class CreateServlet extends HttpServlet {
                 tsk.setCreated_at(currentTime);
                 tsk.setUpdated_at(currentTime);
 
-                em.getTransaction().begin();
-                em.persist(tsk);
-                em.getTransaction().commit();
-                request.getSession().setAttribute("flush", "登録が完了しました。");
-                em.close();
+                // バリデーションを実行してエラーがあったら新規登録のフォームに戻る
+                List<String> errors = TaskValidator.validate(tsk);
+                if(errors.size() > 0) {
+                    em.close();
 
-                response.sendRedirect(request.getContextPath() + "/index");
+                    // フォームに初期値を設定、さらにエラーメッセージを送る
+                    request.setAttribute("_token", request.getSession().getId());
+                    request.setAttribute("tasklist", tsk);
+                    request.setAttribute("errors", errors);
+
+                    RequestDispatcher rd = request.getRequestDispatcher("/WEB-INF/views/tasklist/new.jsp");
+                    rd.forward(request, response);
+                } else {
+
+                    em.getTransaction().begin();
+                    em.persist(tsk);
+                    em.getTransaction().commit();
+                    request.getSession().setAttribute("flush", "登録が完了しました。");
+                    em.close();
+
+                    response.sendRedirect(request.getContextPath() + "/index");
+                }
             }
 
     }
