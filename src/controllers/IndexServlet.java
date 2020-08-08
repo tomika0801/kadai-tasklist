@@ -32,13 +32,33 @@ public class IndexServlet extends HttpServlet {
      * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
      */
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+        final int PAGE_COUNT = 5;
+
         EntityManager em = DBUtil.createEntityManager();
 
-        List<Task> tsk = em.createNamedQuery("getAllTaskList", Task.class).getResultList();
+        // ページ番号を取得（デフォルトは1ページ目）
+        int page = 1;
+        try {
+            page = Integer.parseInt(request.getParameter("page"));
+        } catch(NumberFormatException e) {}
+
+        // 表示するタスクを取得
+        List<Task> tsk = em.createNamedQuery("getAllTasks", Task.class)
+                .setFirstResult(PAGE_COUNT * (page - 1))
+                .setMaxResults(PAGE_COUNT)
+                .getResultList();
+
+        // 件数を取得
+        long task_count = (long)em.createNamedQuery("getTasksCount", Long.class)
+                .getSingleResult();
 
         em.close();
 
         request.setAttribute("tasklist", tsk);
+        request.setAttribute("task_count", task_count);     // 全件数
+        request.setAttribute("page_count", PAGE_COUNT);     // 1ページの件数
+        request.setAttribute("page", page);                 // ページ番号
 
         if(request.getSession().getAttribute("flush") != null) {
             request.setAttribute("flush", request.getSession().getAttribute("flush"));
